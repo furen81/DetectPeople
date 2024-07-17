@@ -77,15 +77,12 @@ def detect_and_annotate(image_path, model, output_image_path, output_json_path):
         }
         predictions.append(prediction)
 
-    # Menyimpan gambar dengan anotasi
     image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     cv2.imwrite(output_image_path, image_bgr)
 
-    # Menyimpan prediksi dalam format JSON
     with open(output_json_path, 'w') as f:
         json.dump(predictions, f, indent=4)
 
-    # Menampilkan gambar dengan anotasi
     plt.figure(figsize=(10, 10))
     plt.imshow(image)
     plt.axis('off')
@@ -161,7 +158,6 @@ image_with_boxes = draw_boxes(image.copy(), boxes, classes)
 #display_image(image_with_boxes)
 
 
-# Contoh penggunaan
 image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpg'
 output_image_path = '/content/drive/MyDrive/datatest/walkpeople2_annotated.jpg'
 
@@ -204,7 +200,6 @@ map_score = compute_map(predictions_path, ground_truths_path)
 print(f"mAP: {map_score}")
 
 def visualize_predictions(image_path, ground_truths_path, predictions_path):
-    # Load image
     image = cv2.imread(image_path)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
@@ -232,15 +227,14 @@ def visualize_predictions(image_path, ground_truths_path, predictions_path):
     plt.axis('off')
     plt.show()
 
-# Path to your image and JSON files
-image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpg'    # Update with the correct path if needed
+image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpg'
 ground_truths_path = '/content/drive/MyDrive/datatest/_annotations.coco.json'
 predictions_path = '/content/drive/MyDrive/datatest/predictions.json'
 
 # Visualize the predictions
 visualize_predictions(image_path, ground_truths_path, predictions_path)
 
-video_path = '/content/drive/MyDrive/datatest/video1walkpeople.mp4'  # Update with the correct path to your video
+video_path = '/content/drive/MyDrive/datatest/video1walkpeople.mp4'
 
 output_path = '/content/drive/MyDrive/datatest/output_video.avi'
 process_video(video_path, model, output_path=output_path)
