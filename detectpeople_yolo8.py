@@ -32,18 +32,74 @@ def load_image(image_path):
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     return image_rgb
 
+
 def detect_people(image, model):
-    results = model(image, conf=0.25, iou=0.9)
+    results = model(image)
     boxes = results[0].boxes.xyxy.cpu().numpy()
+    scores = results[0].boxes.conf.cpu().numpy()
     classes = [model.names[int(cls)] for cls in results[0].boxes.cls.cpu().numpy()]
-    return boxes, classes
+    return boxes, scores, classes
+
+def create_predictions(image_path, model):
+    image = load_image(image_path)
+    boxes, scores, classes = detect_people(image, model)
+    predictions = []
+    for i, box in enumerate(boxes):
+        prediction = {
+            "image_id": 1,
+            "category_id": 1,
+            "bbox": [box[0], box[1], box[2] - box[0], box[3] - box[1]],
+            "score": float(scores[i])
+        }
+        predictions.append(prediction)
+
+    with open('/content/drive/MyDrive/datatest/predictions.json', 'w') as f:
+        json.dump(predictions, f)
+
+
+def detect_and_annotate(image_path, model, output_image_path, output_json_path):
+    image = load_image(image_path)
+    boxes, scores, classes = detect_people(image, model)
+
+    predictions = []
+    for i, box in enumerate(boxes):
+        x_min, y_min, x_max, y_max = box
+        label = f"{classes[i]}: {scores[i]:.2f}"
+
+        cv2.rectangle(image, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
+        cv2.putText(image, label, (int(x_min), int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        prediction = {
+            "image_id": int(1),  # Sesuaikan dengan ID gambar yang benar
+            "category_id": int(1),  # Sesuaikan dengan ID kategori yang benar
+            "bbox": [float(x_min), float(y_min), float(x_max - x_min), float(y_max - y_min)],  # [x_min, y_min, width, height]
+            "score": float(scores[i])  # Confidence score
+        }
+        predictions.append(prediction)
+
+    # Menyimpan gambar dengan anotasi
+    image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(output_image_path, image_bgr)
+
+    # Menyimpan prediksi dalam format JSON
+    with open(output_json_path, 'w') as f:
+        json.dump(predictions, f, indent=4)
+
+    # Menampilkan gambar dengan anotasi
+    plt.figure(figsize=(10, 10))
+    plt.imshow(image)
+    plt.axis('off')
+    plt.show()
+
+
 
 def draw_boxes(image, boxes, classes):
     for i, box in enumerate(boxes):
         x1, y1, x2, y2 = box[:4]
         label = classes[i]
-        cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
-        cv2.putText(image, label, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+        if(label == "person"):
+          cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
+          cv2.putText(image, label, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
     return image
 
 def display_image(image):
@@ -82,28 +138,8 @@ def process_video(video_path, model, output_path='output_video.avi'):
     cap.release()
     out.release()
 
-def detect_and_annotate(image_path, model, output_json='predictions.json'):
-    image = load_image(image_path)
 
-    boxes, classes = detect_people(image, model)
 
-    predictions = []
-    for i, box in enumerate(boxes):
-        prediction = {
-            "image_id": 1,
-            "category_id": 1,
-            "bbox": box[:4].tolist(),
-            "score": 0.9  # Skor prediksi, ini harus digantikan dengan skor asli dari model jika tersedia
-        }
-        predictions.append(prediction)
-
-    with open(output_json, 'w') as f:
-        json.dump(predictions, f)
-
-    image_with_boxes = draw_boxes(image.copy(), boxes, classes)
-    display_image(image_with_boxes)
-
-    return predictions
 
 def display_video(video_path):
     video = open(video_path, "rb").read()
@@ -117,40 +153,38 @@ def display_video(video_path):
 
     return HTML(video_tag)
 
-image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpeg'
-boxes, classes = detect_people(image, model)
-image_with_boxes = draw_boxes(image.copy(), boxes, classes)
-display_image(image_with_boxes)
-
-image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpeg'
+image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpg'
+output_json_path = '/content/drive/MyDrive/datatest/predictions.json'
 image = load_image(image_path)
-boxes, classes = detect_people(image, model2)
+boxes, scores, classes = detect_people(image, model3)
 image_with_boxes = draw_boxes(image.copy(), boxes, classes)
 #display_image(image_with_boxes)
-detect_and_annotate(image_path, model2, output_json='/content/drive/MyDrive/datatest/predictions.json')
 
-image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpeg'
+
+# Contoh penggunaan
+image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpg'
+output_image_path = '/content/drive/MyDrive/datatest/walkpeople2_annotated.jpg'
+
+detect_and_annotate(image_path, model3, output_image_path, output_json_path)
+
+image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpg'
 image = load_image(image_path)
-boxes, classes = detect_people(image, model3)
+boxes, scores, classes = detect_people(image, model3)
 image_with_boxes = draw_boxes(image.copy(), boxes, classes)
 display_image(image_with_boxes)
 
-def create_ground_truths():
-    ground_truths = {
-        "images": [
-            {"id": 1, "width": 640, "height": 480, "file_name": "image1.jpg"},
-        ],
-        "annotations": [
-            {"image_id": 1, "category_id": 1, "bbox": [50, 50, 100, 150], "area": 100*150, "iscrowd": 0, "id": 1},
-        ],
-        "categories": [
-            {"id": 1, "name": "person", "supercategory": "none"},
-        ]
-    }
-    with open('/content/ground_truths.json', 'w') as f:
-        json.dump(ground_truths, f)
+ground_truths_path = '/content/drive/MyDrive/datatest/_annotations.coco.json'
+predictions_path = '/content/drive/MyDrive/datatest/predictions.json'
 
-import json
+# Memeriksa isi ground truth
+with open(ground_truths_path) as f:
+    ground_truths = json.load(f)
+    print(json.dumps(ground_truths, indent=4))
+
+# Memeriksa isi prediksi
+with open(predictions_path) as f:
+    predictions = json.load(f)
+    print(json.dumps(predictions, indent=4))
 
 def compute_map(predictions_path, ground_truths_path, iou_threshold=0.5):
     coco_gt = COCO(ground_truths_path)
@@ -166,8 +200,45 @@ def compute_map(predictions_path, ground_truths_path, iou_threshold=0.5):
     return coco_eval.stats[0]
 
 # Hitung Map
-map_score = compute_map('/content/predictions.json', '/content/ground_truths.json')
+map_score = compute_map(predictions_path, ground_truths_path)
 print(f"mAP: {map_score}")
+
+def visualize_predictions(image_path, ground_truths_path, predictions_path):
+    # Load image
+    image = cv2.imread(image_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # Load ground truths
+    with open(ground_truths_path) as f:
+        ground_truths = json.load(f)
+
+    # Load predictions
+    with open(predictions_path) as f:
+        predictions = json.load(f)
+
+    # Draw ground truth bounding boxes
+    for ann in ground_truths['annotations']:
+        x, y, w, h = ann['bbox']
+        cv2.rectangle(image, (int(x), int(y)), (int(x+w), int(y+h)), (0, 255, 0), 2)  # Green for ground truth
+
+    # Draw prediction bounding boxes
+    for pred in predictions:
+        x, y, w, h = pred['bbox']
+        cv2.rectangle(image, (int(x), int(y)), (int(x+w), int(y+h)), (255, 0, 0), 2)  # Blue for predictions
+
+    # Display the image
+    plt.figure(figsize=(10, 10))
+    plt.imshow(image)
+    plt.axis('off')
+    plt.show()
+
+# Path to your image and JSON files
+image_path = '/content/drive/MyDrive/datatest/walkpeople2.jpg'    # Update with the correct path if needed
+ground_truths_path = '/content/drive/MyDrive/datatest/_annotations.coco.json'
+predictions_path = '/content/drive/MyDrive/datatest/predictions.json'
+
+# Visualize the predictions
+visualize_predictions(image_path, ground_truths_path, predictions_path)
 
 video_path = '/content/drive/MyDrive/datatest/video1walkpeople.mp4'  # Update with the correct path to your video
 
